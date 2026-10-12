@@ -3,12 +3,14 @@
 import React, { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useDebounce } from "@/hooks/use-debounce";
+import { SearchService } from "@/services/search.service";
 import { CatalogService } from "@/services/catalog.service";
-import { Product, ProductFilterParams } from "@/types/product";
+import { SearchHit, SearchFacets, SearchPagination } from "@/types/search";
 import { useCartStore } from "@/store/use-cart-store";
 
-const BRANDS = ["All Brands", "Adidas", "Asics", "Jordan", "New Balance", "Nike", "Puma"];
-const CATEGORIES = [
+const DEFAULT_BRANDS = ["All Brands", "Adidas", "Asics", "Jordan", "New Balance", "Nike", "Puma"];
+const DEFAULT_CATEGORIES = [
   "All Categories",
   "Basketball",
   "Lifestyle & Sneakers",
@@ -16,94 +18,137 @@ const CATEGORIES = [
   "Training & Gym",
 ];
 const SIZES = ["All", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12"];
-const COLORWAYS = [
-  { name: "All Colors", bg: "bg-slate-900", border: "border-slate-900" },
-  { name: "Red", bg: "bg-red-500", border: "border-red-500" },
-  { name: "Black", bg: "bg-black", border: "border-black" },
-  { name: "White", bg: "bg-white", border: "border-slate-300" },
-  { name: "Purple", bg: "bg-purple-600", border: "border-purple-600" },
-  { name: "Grey", bg: "bg-gray-400", border: "border-gray-400" },
-  { name: "Blue", bg: "bg-blue-600", border: "border-blue-600" },
-  { name: "Orange", bg: "bg-orange-500", border: "border-orange-500" },
-  { name: "Green", bg: "bg-emerald-500", border: "border-emerald-500" },
-];
 
-export default function ProductListingPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+export default function ShopPage() {
+  const addItem = useCartStore((s) => s.addItem);
+
+  // Search input & debouncing
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedQuery = useDebounce(searchInput, 300);
+
+  // Catalog items & meta
+  const [products, setProducts] = useState<SearchHit[]>([]);
+  const [facets, setFacets] = useState<SearchFacets | null>(null);
+  const [pagination, setPagination] = useState<SearchPagination>({
+    totalItems: 0,
+    totalPages: 1,
+    currentPage: 1,
+    limit: 20,
+  });
+
+  // UI States
   const [loading, setLoading] = useState(true);
-  const [, startTransition] = useTransition();
+  const [performanceTook, setPerformanceTook] = useState<number | null>(null);
 
   // Filter States
-  const [search, setSearch] = useState("");
-  const [brand, setBrand] = useState("All Brands");
-  const [category, setCategory] = useState("All Categories");
-  const [size, setSize] = useState("All");
-  const [color, setColor] = useState("All Colors");
+  const [selectedBrand, setSelectedBrand] = useState("All Brands");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [selectedSize, setSelectedSize] = useState("All");
   const [maxPrice, setMaxPrice] = useState(25000);
   const [sortBy, setSortBy] = useState<"featured" | "price_asc" | "price_desc">("featured");
 
-  // Inside the component:
-const addItem = useCartStore((s) => s.addItem);
-
-const handleAddToCart = (shoe: Product) => {
-  addItem({
-    productId: shoe.id,
-    size: shoe.availableSizes.length >0 ? shoe.availableSizes[0] : "8",
-    color: shoe.colors[0],
-    quantity: 1,
-  });
-};
-
-  const fetchFilteredProducts = async () => {
+  // Core Data Fetcher
+  const executeSearch = async (query: string, pageNum: number = 1) => {
     try {
       setLoading(true);
-      const params: ProductFilterParams = {
-        page: 1,
-        limit: 30,
-        search: search.trim() || undefined,
-        brand: brand !== "All Brands" ? brand : undefined,
-        category: category !== "All Categories" ? category : undefined,
-        size: size !== "All" ? `US ${size}` : undefined,
-        color: color !== "All Colors" ? color : undefined,
-        minPrice: 0,
-        maxPrice: maxPrice < 25000 ? maxPrice : undefined,
-        sortBy,
-      };
+      const hasCatalogFilters =
+        selectedBrand !== "All Brands" ||
+        selectedCategory !== "All Categories" ||
+        selectedSize !== "All" ||
+        maxPrice < 25000 ||
+        sortBy !== "featured";
 
-      const res = await CatalogService.getProducts(params);
-      setProducts(res.products || []);
+      if (query.trim().length > 0 && !hasCatalogFilters) {
+        // Dynamic search endpoint call
+        const response = await SearchService.search(query, pageNum, 20);
+        setProducts(response.hits || []);
+        setFacets(response.facets || null);
+        setPagination(
+          response.pagination || {
+            totalItems: response.hits.length,
+            totalPages: 1,
+            currentPage: 1,
+            limit: 20,
+          }
+        );
+        setPerformanceTook(response.performance?.tookMs || null);
+      } else {
+        // Standard catalog fetch when search query is empty
+        const catRes = await CatalogService.getProducts({
+          page: pageNum,
+          limit: 20,
+          brand: selectedBrand !== "All Brands" ? selectedBrand : undefined,
+          category: selectedCategory !== "All Categories" ? selectedCategory : undefined,
+          size: selectedSize !== "All" ? `US ${selectedSize}` : undefined,
+          maxPrice: maxPrice < 25000 ? maxPrice : undefined,
+          search: query.trim() || undefined,
+          sortBy,
+        });
+
+        // Map catalog response to SearchHit format
+        const formattedHits: SearchHit[] = (catRes.products || []).map((p) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          brand: p.brand,
+          category: p.category,
+          price: p.price,
+          imageUrl: p.primaryImage,
+          inStock: p.inStock,
+          salesCount: 0,
+          isFeatured: false,
+          discountPercentage: p.discountPercentage,
+          rating: p.rating,
+          reviewCount: p.reviewCount,
+          colorwaysCount: p.colorwaysCount,
+          availableSizes: p.availableSizes,
+        }));
+
+        setProducts(formattedHits);
+        setPagination({
+          totalItems: catRes.total || formattedHits.length,
+          totalPages: catRes.totalPages || 1,
+          currentPage: catRes.page || 1,
+          limit: 20,
+        });
+        setFacets(null);
+        setPerformanceTook(null);
+      }
     } catch (err) {
-      console.error("Error fetching shoes catalog:", err);
+      console.error("Search / catalog query failed:", err);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Trigger search when debounced input or filters update
   useEffect(() => {
-    fetchFilteredProducts();
-  }, [brand, category, size, color, maxPrice, sortBy]);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchFilteredProducts();
-  };
+    executeSearch(debouncedQuery, 1);
+  }, [debouncedQuery, selectedBrand, selectedCategory, selectedSize, maxPrice, sortBy]);
 
   const handleResetFilters = () => {
-    setSearch("");
-    setBrand("All Brands");
-    setCategory("All Categories");
-    setSize("All");
-    setColor("All Colors");
+    setSearchInput("");
+    setSelectedBrand("All Brands");
+    setSelectedCategory("All Categories");
+    setSelectedSize("All");
     setMaxPrice(25000);
     setSortBy("featured");
   };
 
-  console.log("Products ==",products)
+  const handleQuickAdd = (shoe: SearchHit) => {
+    addItem({
+      productId: shoe.id,
+      size: shoe.availableSizes?.[0] || "US 9",
+      color: "Standard",
+      quantity: 1,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#FBFBFC] px-4 py-8 sm:px-6 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        {/* Header Section */}
+        {/* Header & Dynamic Search Bar */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
@@ -114,34 +159,35 @@ const handleAddToCart = (shoe: Product) => {
             </p>
           </div>
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-            <div className="relative min-w-[280px] sm:min-w-[340px]">
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search shoes by model, brand, or style..."
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-xl bg-[#09101D] px-5 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-            >
-              Search
-            </button>
-          </form>
+          {/* Search Input with Clear Action */}
+          <div className="relative min-w-[280px] sm:min-w-[360px]">
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search shoes by model, brand, or style..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-9 text-xs font-medium text-slate-900 placeholder-slate-400 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Catalog Layout */}
+        {/* Layout Grid */}
         <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12">
-          {/* ================= Left Filter Sidebar ================= */}
+          {/* ================= Left Filter Sidebar (Enriched with Facets) ================= */}
           <aside className="lg:col-span-3 space-y-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <span className="text-xs font-extrabold tracking-wider text-slate-700 uppercase">
@@ -159,47 +205,69 @@ const handleAddToCart = (shoe: Product) => {
               </button>
             </div>
 
-            {/* Brand Filter */}
+            {/* Brand Facets */}
             <div>
               <label className="block text-xs font-bold text-slate-800 uppercase mb-2">
                 Brand
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {BRANDS.map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => setBrand(b)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                      brand === b
-                        ? "bg-[#09101D] text-white"
-                        : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                    }`}
-                  >
-                    {b}
-                  </button>
-                ))}
+                {DEFAULT_BRANDS.map((b) => {
+                  const facetCount = facets?.brands?.find(
+                    (f) => f.name.toLowerCase() === b.toLowerCase()
+                  )?.count;
+
+                  return (
+                    <button
+                      key={b}
+                      onClick={() => setSelectedBrand(b)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 ${
+                        selectedBrand === b
+                          ? "bg-[#09101D] text-white"
+                          : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      <span>{b}</span>
+                      {facetCount !== undefined && b !== "All Brands" && (
+                        <span className={`text-[10px] ${selectedBrand === b ? "text-slate-300" : "text-slate-400"}`}>
+                          ({facetCount})
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Category Filter */}
+            {/* Category Facets */}
             <div>
               <label className="block text-xs font-bold text-slate-800 uppercase mb-2">
                 Category
               </label>
               <div className="space-y-1">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategory(cat)}
-                    className={`block w-full text-left rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      category === cat
-                        ? "bg-blue-50 text-blue-600 font-bold"
-                        : "text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+                {DEFAULT_CATEGORIES.map((cat) => {
+                  const facetCount = facets?.categories?.find(
+                    (f) => f.name.toLowerCase() === cat.toLowerCase()
+                  )?.count;
+
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`w-full flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                        selectedCategory === cat
+                          ? "bg-blue-50 text-blue-600 font-bold"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span>{cat}</span>
+                      {facetCount !== undefined && cat !== "All Categories" && (
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {facetCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -212,9 +280,9 @@ const handleAddToCart = (shoe: Product) => {
                 {SIZES.map((s) => (
                   <button
                     key={s}
-                    onClick={() => setSize(s)}
+                    onClick={() => setSelectedSize(s)}
                     className={`rounded-lg py-1.5 text-xs font-semibold transition ${
-                      size === s
+                      selectedSize === s
                         ? "bg-[#09101D] text-white"
                         : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                     }`}
@@ -225,32 +293,7 @@ const handleAddToCart = (shoe: Product) => {
               </div>
             </div>
 
-            {/* Colorway Filter */}
-            <div>
-              <label className="block text-xs font-bold text-slate-800 uppercase mb-2">
-                Colorway
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {COLORWAYS.map((c) => (
-                  <button
-                    key={c.name}
-                    onClick={() => setColor(c.name)}
-                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
-                      color === c.name
-                        ? "border-[#09101D] bg-[#09101D] text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                    }`}
-                  >
-                    {c.name !== "All Colors" && (
-                      <span className={`h-2.5 w-2.5 rounded-full ${c.bg} border ${c.border}`} />
-                    )}
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Price Range Slider */}
+            {/* Price Slider */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-bold text-slate-800 uppercase">
@@ -274,11 +317,19 @@ const handleAddToCart = (shoe: Product) => {
 
           {/* ================= Right Product Grid ================= */}
           <main className="lg:col-span-9">
-            {/* Top Bar Sorting & Counter */}
+            {/* Top Bar Details */}
             <div className="flex items-center justify-between pb-4">
-              <span className="text-xs font-medium text-slate-500">
-                Showing <strong className="text-slate-800">{products.length}</strong> styles
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-500">
+                  Showing <strong className="text-slate-800">{pagination.totalItems}</strong> styles
+                </span>
+                {performanceTook && (
+                  <span className="text-[10px] text-slate-400">
+                    • Search took {performanceTook}ms
+                  </span>
+                )}
+              </div>
+
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500">Sort By:</span>
                 <select
@@ -293,11 +344,14 @@ const handleAddToCart = (shoe: Product) => {
               </div>
             </div>
 
-            {/* Grid */}
+            {/* Loading Skeleton */}
             {loading ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3, 4, 5, 6].map((idx) => (
-                  <div key={idx} className="h-80 rounded-2xl bg-white border border-slate-100 p-4 animate-pulse space-y-3">
+                  <div
+                    key={idx}
+                    className="h-80 rounded-2xl bg-white border border-slate-100 p-4 animate-pulse space-y-3"
+                  >
                     <div className="h-44 bg-slate-100 rounded-xl" />
                     <div className="h-4 w-2/3 bg-slate-100 rounded" />
                     <div className="h-4 w-1/3 bg-slate-100 rounded" />
@@ -305,16 +359,20 @@ const handleAddToCart = (shoe: Product) => {
                 ))}
               </div>
             ) : products.length === 0 ? (
+              /* Zero State */
               <div className="rounded-2xl border border-dashed border-slate-200 p-12 text-center bg-white">
-                <p className="text-sm font-medium text-slate-500">No kicks found matching your filters.</p>
+                <p className="text-sm font-medium text-slate-500">
+                  No kicks found matching &ldquo;{searchInput}&rdquo;.
+                </p>
                 <button
                   onClick={handleResetFilters}
                   className="mt-2 text-xs font-bold text-blue-600 hover:underline"
                 >
-                  Clear all filters
+                  Clear search and filters
                 </button>
               </div>
             ) : (
+              /* Product Grid */
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {products.map((shoe) => (
                   <div
@@ -322,15 +380,21 @@ const handleAddToCart = (shoe: Product) => {
                     className="group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3 transition hover:shadow-md"
                   >
                     <div>
-                      {/* Image Viewer with Badges */}
+                      {/* Thumbnail Container */}
                       <div className="relative h-48 w-full overflow-hidden rounded-xl bg-[#F4F4F6]">
                         {shoe.discountPercentage && shoe.discountPercentage > 0 && (
                           <span className="absolute top-2.5 left-2.5 z-10 rounded-md bg-[#FF0055] px-2 py-0.5 text-[10px] font-extrabold text-white">
                             {shoe.discountPercentage}% OFF
                           </span>
                         )}
-                        <span className="absolute top-2.5 right-2.5 z-10 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                          In Stock
+                        <span
+                          className={`absolute top-2.5 right-2.5 z-10 rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                            shoe.inStock
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {shoe.inStock ? "In Stock" : "Sold Out"}
                         </span>
                         <span className="absolute bottom-2.5 left-2.5 z-10 rounded-md bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white">
                           {shoe.brand}
@@ -338,7 +402,7 @@ const handleAddToCart = (shoe: Product) => {
 
                         <Link href={`/shop/${shoe.id}`}>
                           <Image
-                            src={shoe.imageUrl}
+                            src={shoe.imageUrl || "/images/placeholder-shoe.jpg"}
                             alt={shoe.title}
                             fill
                             sizes="(max-width: 768px) 100vw, 33vw"
@@ -351,9 +415,16 @@ const handleAddToCart = (shoe: Product) => {
                       <div className="mt-3 space-y-1">
                         <div className="flex items-center justify-between text-[11px] text-slate-500">
                           <span>{shoe.category}</span>
-                          <span className="flex items-center text-amber-500 font-bold">
-                            ★ {shoe.rating} <span className="text-slate-400 font-normal ml-0.5">({shoe.reviewCount})</span>
-                          </span>
+                          {shoe.rating && (
+                            <span className="flex items-center text-amber-500 font-bold">
+                              ★ {shoe.rating}{" "}
+                              {shoe.reviewCount && (
+                                <span className="text-slate-400 font-normal ml-0.5">
+                                  ({shoe.reviewCount})
+                                </span>
+                              )}
+                            </span>
+                          )}
                         </div>
 
                         <Link href={`/shop/${shoe.id}`}>
@@ -361,11 +432,6 @@ const handleAddToCart = (shoe: Product) => {
                             {shoe.title}
                           </h3>
                         </Link>
-
-                        <div className="flex items-center justify-between text-[11px] text-slate-400">
-                          <span>{shoe.colorwaysCount} Colorways</span>
-                          <span>Sizes: US {shoe.availableSizes?.[0]?.replace("US ", "")} - {shoe.availableSizes?.[shoe.availableSizes.length - 1]?.replace("US ", "")}</span>
-                        </div>
                       </div>
                     </div>
 
@@ -375,17 +441,13 @@ const handleAddToCart = (shoe: Product) => {
                         <span className="text-base font-extrabold text-slate-900">
                           ₹{shoe.price.toLocaleString("en-IN")}
                         </span>
-                        {shoe.originalPrice && shoe.originalPrice > shoe.price && (
-                          <span className="ml-1.5 text-xs text-slate-400 line-through">
-                            ₹{shoe.originalPrice.toLocaleString("en-IN")}
-                          </span>
-                        )}
                       </div>
 
                       <button
                         type="button"
-                        onClick={()=>handleAddToCart(shoe)}
-                        className="flex items-center gap-1 rounded-xl bg-[#09101D] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95"
+                        onClick={() => handleQuickAdd(shoe)}
+                        disabled={!shoe.inStock}
+                        className="flex items-center gap-1 rounded-xl bg-[#09101D] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-slate-800 active:scale-95 disabled:opacity-40"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -395,6 +457,29 @@ const handleAddToCart = (shoe: Product) => {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between pt-8 border-t border-slate-200 mt-8">
+                <button
+                  disabled={pagination.currentPage <= 1 || loading}
+                  onClick={() => executeSearch(debouncedQuery, pagination.currentPage - 1)}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40"
+                >
+                  ← Previous
+                </button>
+                <span className="text-xs font-medium text-slate-500">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <button
+                  disabled={pagination.currentPage >= pagination.totalPages || loading}
+                  onClick={() => executeSearch(debouncedQuery, pagination.currentPage + 1)}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Next →
+                </button>
               </div>
             )}
           </main>
