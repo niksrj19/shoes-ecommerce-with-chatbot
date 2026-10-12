@@ -1,0 +1,20 @@
+Build a production-ready, fully responsive **Profile & Shipping Addresses** management page in Next.js (App Router, TypeScript, Tailwind CSS) for the shoe retail application **SoleVault**.### UI Layout & Structure (Referencing the design style)- **Header Section**: Page title ("Profile & Shipping Addresses") with a brief subtitle description.- **Two-Column Grid Layout**:  - **Left Column (Profile Info Card)**:     - Displays user avatar initials, user full name, email, and role badge (e.g., `ADMIN` / `USER`).    - **Google Account Field**: Read-only field indicating Google Sign-In restriction with a green "Google Verified" badge.    - *Note: Contact Number and Preferred Shoe Size fields have been removed from this profile view as requested.*  - **Right Column (Shipping Addresses Management)**:    - Section header with an **"Add New Shipping Address"** trigger button (opens a clean modal or inline form).    - **Address Cards List**: Iterates through all saved addresses fetched from the backend.     - Each card displays recipient name, full address structure, state, country, and a blue `DEFAULT` badge if `isPrimary` is true.    - Action buttons on each card for editing or deleting.
+
+---### Backend API Integration1. **Fetch All Addresses**:   - Method & URL: `GET http://localhost:3000/api/addresses`   - Triggered on page load to populate the shipping addresses list.2. **Save / Create New Address**:   - Method & URL: `POST http://localhost:3000/api/addresses`   - Payload structure:     ```json
+     {
+       "firstName": "Nitesh",
+       "lastName": "tak",
+       "addressLine1": "Dhoal Bhata Ajmer India",
+       "addressLine2": "hello",
+       "pincode": "305001",
+       "state": "Rajasthan",
+       "country": "India",
+       "deliveryInstruction": "Leave at front security desk",
+       "isPrimary": true
+     }
+     ```
+- Form validation should include required fields and dropdown selection for `isPrimary` (`true` / `false`).
+3. **Delete Address**:   - Method & URL: `DELETE http://localhost:3000/api/addresses/ADDRESS_ID_TO_BE_DELETE`   - Triggered when clicking the trash/delete icon on any address card, followed by immediate state update to remove the card from the UI. 
+
+
+take image reference
