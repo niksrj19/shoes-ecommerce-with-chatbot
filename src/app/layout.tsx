@@ -3,8 +3,10 @@ import { Inter } from "next/font/google";
 import  Header  from "@/components/header";
 import  { Footer }  from "@/components/footer";
 import CartDrawer from "@/components/shop/CartDrawer";
+import AkaChatWidget from "@/components/chat/AkaChatWidget";
 import "./globals.css";
 import { Suspense } from "react";
+
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,6 +29,7 @@ export default function RootLayout({
         
         <main className="flex-grow">{children}</main>
         <CartDrawer />
+        <AkaChatWidget />
         </Suspense>
         <Footer />
       </body>
