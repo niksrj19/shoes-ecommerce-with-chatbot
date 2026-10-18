@@ -13,6 +13,13 @@ export interface FootwearSpecifications {
   skuReference: string;
 }
 
+export interface Images {
+  id : string;
+  url :string;
+  altText: string;
+  productId : string;
+}
+
 export interface Product {
   id: string;
   title: string;
@@ -30,7 +37,7 @@ export interface Product {
   colors: string[];
   primaryImage: string;
   imageUrl: string;
-  images: string[],
+  images: Images[],
   galleryImages: string[];
   description: string;
   specifications: FootwearSpecifications;

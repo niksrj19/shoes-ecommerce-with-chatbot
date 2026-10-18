@@ -37,9 +37,9 @@ const handleAddToCart = () => {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const data = await CatalogService.getProductById(productId);
+        const data: Product = await CatalogService.getProductById(productId);
         setProduct(data);
-        setActiveImage(data.imageUrl || data.images?.[0] || "");
+        setActiveImage(data.imageUrl || data.images[0].url || "");
         setSelectedColor(data.colors?.[0] || "");
         setSelectedSize(data.availableSizes?.[2] || data.availableSizes?.[0] || "US 9");
       } catch (err) {
@@ -109,12 +109,12 @@ const handleAddToCart = () => {
               {[...(product.images || [])].map((img, idx) => (
                 <button
                   key={img?.id || idx}
-                  onClick={() => setActiveImage(img?.url || img)}
+                  onClick={() => setActiveImage(img.url)}
                   className={`relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 transition ${
                     (activeImage === img?.url) ? "border-blue-600 ring-2 ring-blue-600/20" : "border-slate-200 hover:border-slate-300"
                   }`}
                 >
-                  <Image src={img?.url || img} alt={img?.altText ||"shoes"} fill className="object-cover" />
+                  <Image src={img.url} alt={img.altText || "shoes"} fill className="object-cover" />
                 </button>
               ))}
             </div>

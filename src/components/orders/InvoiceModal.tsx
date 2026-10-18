@@ -120,8 +120,8 @@ export default function InvoiceModal({ order, onClose }: InvoiceModalProps) {
 
         {/* Calculation Summary */}
         <div className="mt-6 border-t border-slate-100 pt-4 space-y-1.5 text-xs text-slate-500 max-w-xs ml-auto text-right">
-          <div className="flex justify-between"><span>Subtotal:</span><span className="font-semibold text-slate-800">₹{order.totalAmount.toLocaleString("en-IN")}</span></div>
-          <div className="flex justify-between"><span>GST (18%):</span><span className="font-semibold text-slate-800">₹{order.totalAmount.toLocaleString("en-IN")}</span></div>
+          <div className="flex justify-between"><span>Subtotal:</span><span className="font-semibold text-slate-800">₹{order.totalAmount}</span></div>
+          <div className="flex justify-between"><span>GST (18%):</span><span className="font-semibold text-slate-800">₹{order.totalAmount}</span></div>
           <div className="flex justify-between"><span>Shipping & Handling:</span><span className="font-bold text-emerald-600">₹0</span></div>
           <div className="flex justify-between pt-2 border-t border-slate-200 text-sm font-extrabold text-slate-900">
             <span>Total Paid (INR):</span>
