@@ -10,7 +10,7 @@ import axios, {
 import { getOrCreateSessionId } from "./session";
 
 const BACKEND_BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.basesole.online";
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BACKEND_BASE_URL,

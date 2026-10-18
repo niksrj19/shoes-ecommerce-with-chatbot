@@ -11,6 +11,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
+  console.log("Nitesh isProtected= ",isProtected)
+
   // In dual-token setups, check accessToken first, then fallback to refreshToken
   // (In case accessToken just expired and needs client-side background renewal)
   const token =
