@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/api-client";
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.basesole.online";
 
 export interface UserProfile {
   id: string;
