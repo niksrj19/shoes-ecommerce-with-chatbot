@@ -16,7 +16,7 @@ interface CartStoreState {
   closeDrawer: () => void;
   setAuthReady: () => void;
   fetchCart: () => Promise<void>;
-  addItem: (item: CartItemMutationDTO & { quantity: number }) => Promise<void>;
+  addItem: (item: CartItemMutationDTO & { quantity: number }) => Promise<boolean>;
   updateQuantity: (item: CartItemMutationDTO & { quantity: number }) => Promise<void>;
   removeItem: (item: CartItemMutationDTO) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -77,8 +77,10 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
         totalQuantity: updatedCart.totalQuantity,
         isDrawerOpen: true, // Auto-open drawer on addition
       });
+      return true;
     } catch (err) {
       console.error("Failed to add cart item:", err);
+      return false;
     } finally {
       set({ isLoading: false });
     }
