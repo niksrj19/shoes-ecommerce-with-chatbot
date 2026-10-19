@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { CartItem, CartItemMutationDTO } from "@/types/cart";
+import { CartItem, CartItemMutationDTO, CartSummary } from "@/types/cart";
 import { CartService } from "@/services/cart.service";
 
 interface CartStoreState {
@@ -25,6 +25,18 @@ interface CartStoreState {
 
 let cartFetchPromise: Promise<void> | null = null;
 
+const getCartState = (cart: CartSummary) => {
+  const items = cart.items || [];
+
+  return {
+    items,
+    subtotal: cart.subtotal || 0,
+    gstAmount: cart.gstAmount || 0,
+    totalAmount: cart.totalAmount || 0,
+    totalQuantity: items.reduce((quantity, item) => quantity + item.quantity, 0),
+  };
+};
+
 export const useCartStore = create<CartStoreState>((set, get) => ({
   items: [],
   subtotal: 0,
@@ -47,13 +59,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
       try {
         set({ isLoading: true });
         const cart = await CartService.getCart();
-        set({
-          items: cart.items || [],
-          subtotal: cart.subtotal || 0,
-          gstAmount: cart.gstAmount || 0,
-          totalAmount: cart.totalAmount || 0,
-          totalQuantity: cart.totalQuantity || cart.items?.reduce((acc, i) => acc + i.quantity, 0) || 0,
-        });
+        set(getCartState(cart));
       } catch (err) {
         console.error("Failed to fetch cart:", err);
       } finally {
@@ -69,14 +75,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
     try {
       set({ isLoading: true });
       const updatedCart = await CartService.addItem(payload);
-      set({
-        items: updatedCart.items,
-        subtotal: updatedCart.subtotal,
-        gstAmount: updatedCart.gstAmount,
-        totalAmount: updatedCart.totalAmount,
-        totalQuantity: updatedCart.totalQuantity,
-        isDrawerOpen: true, // Auto-open drawer on addition
-      });
+      set(getCartState(updatedCart));
       return true;
     } catch (err) {
       console.error("Failed to add cart item:", err);
@@ -90,13 +89,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
     try {
       set({ isLoading: true });
       const updatedCart = await CartService.updateQuantity(payload);
-      set({
-        items: updatedCart.items,
-        subtotal: updatedCart.subtotal,
-        gstAmount: updatedCart.gstAmount,
-        totalAmount: updatedCart.totalAmount,
-        totalQuantity: updatedCart.totalQuantity,
-      });
+      set(getCartState(updatedCart));
     } catch (err) {
       console.error("Failed to update cart quantity:", err);
     } finally {
@@ -108,13 +101,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
     try {
       set({ isLoading: true });
       const updatedCart = await CartService.removeItem(payload);
-      set({
-        items: updatedCart.items,
-        subtotal: updatedCart.subtotal,
-        gstAmount: updatedCart.gstAmount,
-        totalAmount: updatedCart.totalAmount,
-        totalQuantity: updatedCart.totalQuantity,
-      });
+      set(getCartState(updatedCart));
     } catch (err) {
       console.error("Failed to remove cart item:", err);
     } finally {
@@ -142,13 +129,7 @@ export const useCartStore = create<CartStoreState>((set, get) => ({
     try {
       set({ isLoading: true });
       const merged = await CartService.mergeGuestCart();
-      set({
-        items: merged.items,
-        subtotal: merged.subtotal,
-        gstAmount: merged.gstAmount,
-        totalAmount: merged.totalAmount,
-        totalQuantity: merged.totalQuantity,
-      });
+      set(getCartState(merged));
     } finally {
       set({ isLoading: false });
     }
