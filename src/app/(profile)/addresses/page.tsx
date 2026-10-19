@@ -148,7 +148,7 @@ export default function ProfileAndAddressesPage() {
                   />
                 </div>
                 <p className="mt-1.5 text-[11px] text-slate-400">
-                  SoleVault user login is exclusively tied to your verified Google account.
+                  BaseSole user login is exclusively tied to your verified Google account.
                 </p>
               </div>
             </div>

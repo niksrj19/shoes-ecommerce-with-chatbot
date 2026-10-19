@@ -12,7 +12,7 @@ import { Suspense } from "react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SoleVault | Premium Footwear & Sneaker Drops",
+  title: "BaseSole | Premium Footwear & Sneaker Drops",
   description: "Curated sneaker releases, limited edition drops, and exclusive access.",
 };
 

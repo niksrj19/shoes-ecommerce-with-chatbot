@@ -52,12 +52,12 @@ export default function InvoiceModal({ order, onClose }: InvoiceModalProps) {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white font-black text-xs">
-              SV
+              BS
             </div>
-            <h3 className="text-base font-bold text-slate-900 pt-1">SoleVault Footwear Inc.</h3>
+            <h3 className="text-base font-bold text-slate-900 pt-1">BaseSole Footwear Inc.</h3>
             <p className="text-[11px] text-slate-500 leading-tight">
               100 Kicks Way, Portland, OR 97201<br />
-              support@solevault.com • GST/Tax ID: US-9874521
+              support@basesole.online • GST/Tax ID: US-9874521
             </p>
           </div>
 
@@ -86,7 +86,7 @@ export default function InvoiceModal({ order, onClose }: InvoiceModalProps) {
             <span className="text-[10px] uppercase font-bold text-slate-400">PAYMENT VERIFICATION:</span>
             <p className="mt-1 font-bold text-slate-900">Exclusive QR Code Gateway</p>
             <p className="text-[11px] text-slate-500">Ref : {order.paymentReference || "UPI-TXN-742828"}</p>
-            <p className="text-[10px] text-slate-400 mt-1">Verified via SoleVault Security</p>
+            <p className="text-[10px] text-slate-400 mt-1">Verified via BaseSole Security</p>
           </div>
         </div>
 
@@ -131,7 +131,7 @@ export default function InvoiceModal({ order, onClose }: InvoiceModalProps) {
 
         {/* Policy Footer */}
         <p className="mt-8 text-center text-[10px] text-slate-400">
-          Thank you for choosing SoleVault! This order is protected by our 30-day authentic return policy.
+          Thank you for choosing BaseSole! This order is protected by our 30-day authentic return policy.
         </p>
       </div>
     </div>

@@ -108,7 +108,7 @@ const renderMessageContent = (content: string) => {
                     Support AI
                   </span>
                 </h3>
-                <p className="text-[10px] text-neutral-400">SoleVault Virtual Assistant</p>
+                <p className="text-[10px] text-neutral-400">BaseSole Virtual Assistant</p>
               </div>
             </div>
 

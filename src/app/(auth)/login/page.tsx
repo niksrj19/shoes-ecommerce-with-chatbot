@@ -22,10 +22,10 @@ function LoginContent() {
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 text-neutral-950 font-black tracking-wider text-xl shadow-lg">
-            S
+            B
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-100">
-            Welcome to SoleVault
+            Welcome to BaseSole
           </h1>
           <p className="text-sm text-neutral-400">
             Premium footwear releases, curated drops, and exclusive access.
