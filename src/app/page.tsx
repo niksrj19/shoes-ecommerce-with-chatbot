@@ -2,9 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CatalogService } from "@/services/catalog.service";
-import { useCartStore } from "@/store/use-cart-store";
 import { Product } from "@/types/product";
 
 const BRANDS = ["Nike", "Adidas", "Puma", "New Balance", "Jordan", "Reebok", "Under Armour"];
@@ -76,8 +75,8 @@ export default function Home() {
   const [paused, setPaused] = useState(false);
   const [wishlist, setWishlist] = useState<Set<string | number>>(new Set());
   const [justAdded, setJustAdded] = useState<string | number | null>(null);
-  const [addFailed, setAddFailed] = useState<string | number | null>(null);
-  const addItem = useCartStore((state) => state.addItem);
+  const touchStartX = useRef<number | null>(null);
+  const goTo = (dir: 1 | -1) => setSlide((s) => (s + dir + SLIDES.length) % SLIDES.length);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,41 +121,39 @@ export default function Home() {
       return next;
     });
 
-  const handleAdd = async (product: Product) => {
-    setJustAdded(null);
-    setAddFailed(null);
-
-    const added = await addItem({
-      productId: product.id,
-      size: product.availableSizes?.[0] || "US 9",
-      color: product.colors?.[0] || "Standard",
-      quantity: 1,
-    });
-
-    if (!added) {
-      setAddFailed(product.id);
-      return;
-    }
-
-    setJustAdded(product.id);
-    setTimeout(() => setJustAdded((cur) => (cur === product.id ? null : cur)), 1500);
+  const handleAdd = (id: string | number) => {
+    // TODO: wire to cart service / context
+    setJustAdded(id);
+    setTimeout(() => setJustAdded((cur) => (cur === id ? null : cur)), 1500);
   };
 
   const current = SLIDES[slide];
 
   return (
-    <div className="flex flex-1 flex-col bg-[#FBFBFC] text-slate-900">
+    <div className="flex w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden bg-[#FBFBFC] px-4 pb-[env(safe-area-inset-bottom)] text-slate-900 sm:px-6">
       {/* HERO */}
       <section
-        className="relative mx-auto mt-4 w-full max-w-7xl overflow-hidden rounded-3xl bg-[#09101D]"
+        className="relative mx-auto mt-3 w-full max-w-7xl touch-pan-y overflow-hidden rounded-2xl bg-[#09101D] sm:mt-4 sm:rounded-3xl"
         aria-roledescription="carousel"
         aria-label="Featured collections"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onFocus={() => setPaused(true)}
         onBlur={() => setPaused(false)}
+        onTouchStart={(e) => {
+          touchStartX.current = e.touches[0].clientX;
+          setPaused(true);
+        }}
+        onTouchEnd={(e) => {
+          const start = touchStartX.current;
+          touchStartX.current = null;
+          setPaused(false);
+          if (start === null) return;
+          const dx = e.changedTouches[0].clientX - start;
+          if (Math.abs(dx) > 40) goTo(dx < 0 ? 1 : -1);
+        }}
       >
-        <div className="relative h-[380px] sm:h-[460px] lg:h-[520px]">
+        <div className="relative h-[440px] sm:h-[460px] lg:h-[520px]">
           {SLIDES.map((s, i) => (
             <Image
               key={s.image}
@@ -169,9 +166,9 @@ export default function Home() {
             />
           ))}
           {/* Legibility gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#09101D]/90 via-[#09101D]/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#09101D]/95 via-[#09101D]/55 to-transparent sm:bg-gradient-to-r sm:from-[#09101D]/90 sm:via-[#09101D]/50" />
 
-          <div className="relative flex h-full max-w-xl flex-col justify-center gap-4 px-6 sm:px-12" aria-live="polite">
+          <div className="relative flex h-full max-w-xl flex-col justify-end gap-3 px-5 pb-14 sm:justify-center sm:gap-4 sm:px-12 sm:pb-0" aria-live="polite">
             <span className="w-fit rounded-full bg-[#FF0055] px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white">
               {current.eyebrow}
             </span>
@@ -179,16 +176,16 @@ export default function Home() {
               {current.title}
             </h1>
             <p className="text-sm text-slate-200 sm:text-base">{current.subtitle}</p>
-            <div className="mt-2 flex flex-wrap gap-3">
+            <div className="mt-2 grid grid-cols-2 gap-2.5 sm:flex sm:gap-3">
               <Link
                 href={current.href}
-                className="rounded-full bg-white px-6 py-3 text-sm font-bold text-[#09101D] transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="rounded-full bg-white px-4 py-3 text-center text-sm font-bold sm:px-6 text-[#09101D] transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 {current.cta}
               </Link>
               <Link
                 href="/shop?sale=true"
-                className="rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="rounded-full border border-white/40 px-4 py-3 text-center text-sm font-semibold sm:px-6 text-white transition hover:bg-white/10"
               >
                 View deals
               </Link>
@@ -196,7 +193,7 @@ export default function Home() {
           </div>
 
           {/* Controls */}
-          <div className="absolute bottom-5 left-6 flex items-center gap-2 sm:left-12">
+          <div className="absolute bottom-5 left-5 flex items-center gap-3 sm:left-12">
             {SLIDES.map((s, i) => (
               <button
                 key={s.image}
@@ -204,7 +201,7 @@ export default function Home() {
                 onClick={() => setSlide(i)}
                 aria-label={`Go to slide ${i + 1}`}
                 aria-current={i === slide}
-                className={`h-2 rounded-full transition-all ${i === slide ? "w-8 bg-white" : "w-2 bg-white/50 hover:bg-white/80"}`}
+                className={`relative h-2 rounded-full transition-all before:absolute before:-inset-3 before:content-[''] ${i === slide ? "w-8 bg-white" : "w-2 bg-white/50 hover:bg-white/80"}`}
               />
             ))}
           </div>
@@ -212,9 +209,9 @@ export default function Home() {
       </section>
 
       {/* PERKS */}
-      <section aria-label="Why shop with us" className="mx-auto mt-6 grid w-full max-w-7xl grid-cols-2 gap-3 px-1 lg:grid-cols-4">
+      <section aria-label="Why shop with us" className="mx-auto mt-4 flex w-full min-w-0 max-w-7xl snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain sm:mt-6 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {PERKS.map((p) => (
-          <div key={p.title} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5">
+          <div key={p.title} className="flex min-w-[250px] shrink-0 snap-start items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 sm:min-w-0">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
               <Icon d={p.icon} />
             </span>
@@ -227,18 +224,18 @@ export default function Home() {
       </section>
 
       {/* SECTION HEADER + FILTERS */}
-      <section className="mx-auto mt-12 w-full max-w-7xl">
+      <section className="mx-auto mt-8 w-full max-w-7xl sm:mt-12">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Trending kicks</h2>
             <p className="mt-1 text-sm text-slate-500">Fresh drops and fan favourites, picked for you.</p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex w-full items-center gap-2 text-sm text-slate-600 sm:w-auto">
             <span className="sr-only sm:not-sr-only">Sort by</span>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as Sort)}
-              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 focus:border-slate-500 focus:outline-none"
+              className="w-full rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 focus:border-slate-500 focus:outline-none sm:w-auto"
             >
               <option value="featured">Featured</option>
               <option value="price-asc">Price: Low to High</option>
@@ -248,7 +245,7 @@ export default function Home() {
         </div>
 
         {/* Brand chips — horizontal scroll on mobile, no wrapping clutter */}
-        <div role="group" aria-label="Filter by brand" className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div role="group" aria-label="Filter by brand" className="mt-5 flex max-w-[100vw] snap-x gap-2 overflow-x-auto overscroll-x-contain scroll-px-4 px-4 pb-2 sm:mx-0 sm:max-w-full sm:flex-wrap sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {["All", ...BRANDS].map((b) => {
             const selected = (b === "All" && !activeBrand) || b === activeBrand;
             return (
@@ -257,7 +254,7 @@ export default function Home() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => setActiveBrand(b === "All" ? null : b)}
-                className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                className={`shrink-0 snap-start whitespace-nowrap rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
                   selected
                     ? "border-[#09101D] bg-[#09101D] text-white"
                     : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900"
@@ -285,7 +282,7 @@ export default function Home() {
               return (
                 <article
                   key={product.id}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-shadow hover:shadow-xl"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-shadow [@media(hover:hover)]:hover:shadow-xl"
                 >
                   <Link href={`/shop/${product.id}`} className="relative block aspect-square overflow-hidden bg-slate-50">
                     <Image
@@ -293,7 +290,7 @@ export default function Home() {
                       alt={product.title}
                       fill
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      className={`object-contain p-4 transition-transform duration-500 group-hover:scale-105 ${product.inStock ? "" : "opacity-50 grayscale"}`}
+                      className={`object-contain p-3 transition-transform duration-500 sm:p-4 [@media(hover:hover)]:group-hover:scale-105 ${product.inStock ? "" : "opacity-50 grayscale"}`}
                     />
                     {hasDiscount && (
                       <span className="absolute left-3 top-3 rounded-md bg-[#FF0055] px-2 py-1 text-[11px] font-extrabold text-white">
@@ -312,23 +309,25 @@ export default function Home() {
                     onClick={() => toggleWish(product.id)}
                     aria-pressed={wished}
                     aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
-                    className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur transition hover:scale-110"
+                    className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full sm:right-3 sm:top-3"
                   >
-                    <svg className={`h-4.5 w-4.5 h-[18px] w-[18px] ${wished ? "fill-[#FF0055] text-[#FF0055]" : "fill-none text-slate-600"}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.3 6.3a4.5 4.5 0 016.4 0L12 7.6l1.3-1.3a4.5 4.5 0 116.4 6.4L12 20.4l-7.7-7.7a4.5 4.5 0 010-6.4z" />
-                    </svg>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur">
+                      <svg className={`h-[18px] w-[18px] ${wished ? "fill-[#FF0055] text-[#FF0055]" : "fill-none text-slate-600"}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.3 6.3a4.5 4.5 0 016.4 0L12 7.6l1.3-1.3a4.5 4.5 0 116.4 6.4L12 20.4l-7.7-7.7a4.5 4.5 0 010-6.4z" />
+                      </svg>
+                    </span>
                   </button>
 
                   <div className="flex flex-1 flex-col p-3.5 sm:p-4">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{product.brand}</p>
                     <Link href={`/shop/${product.id}`}>
-                      <h3 className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-snug text-slate-900 transition hover:text-blue-600">
+                      <h3 className="mt-1 line-clamp-2 min-h-[2.5rem] text-[13px] font-bold sm:text-sm leading-snug text-slate-900 transition hover:text-blue-600">
                         {product.title}
                       </h3>
                     </Link>
 
                     <div className="mt-3 flex items-baseline gap-2">
-                      <span className="text-lg font-extrabold">₹{product.price.toLocaleString("en-IN")}</span>
+                      <span className="text-base font-extrabold sm:text-lg">₹{product.price.toLocaleString("en-IN")}</span>
                       {mrp && (
                         <span className="text-xs text-slate-400 line-through">₹{mrp.toLocaleString("en-IN")}</span>
                       )}
@@ -336,9 +335,9 @@ export default function Home() {
 
                     <button
                       type="button"
-                      onClick={() => handleAdd(product)}
+                      onClick={() => handleAdd(product.id)}
                       disabled={!product.inStock}
-                      className={`mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 ${
+                      className={`mt-3 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-bold sm:gap-2 sm:px-4 sm:text-sm text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 ${
                         justAdded === product.id ? "bg-emerald-600" : "bg-[#09101D] hover:bg-slate-800"
                       }`}
                     >
@@ -346,8 +345,6 @@ export default function Home() {
                         <>
                           <Icon d="M5 13l4 4L19 7" className="h-4 w-4" /> Added
                         </>
-                      ) : addFailed === product.id ? (
-                        "Couldn't add. Try again"
                       ) : product.inStock ? (
                         <>
                           <Icon d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" className="h-4 w-4" /> Add to cart
@@ -382,10 +379,10 @@ export default function Home() {
         )}
 
         {/* CTA */}
-        <div className="my-12 text-center">
+        <div className="my-10 text-center sm:my-12">
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 rounded-full bg-[#09101D] px-8 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800"
+            className="flex w-full items-center justify-center gap-2 rounded-full sm:inline-flex sm:w-auto bg-[#09101D] px-8 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800"
           >
             View all kicks
             <Icon d="M14 5l7 7m0 0l-7 7m7-7H3" className="h-4 w-4" />

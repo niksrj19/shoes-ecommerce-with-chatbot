@@ -94,10 +94,10 @@ export default function Header() {
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5 group">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-neutral-950 font-black text-lg tracking-wider transition-transform group-hover:scale-105 shadow-md">
-              S
+              B
             </span>
             <span className="text-xl font-bold tracking-tight text-white group-hover:text-neutral-200 transition-colors">
-              SoleVault
+              BaseSole
             </span>
           </Link>
 

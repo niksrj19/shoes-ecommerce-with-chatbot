@@ -10,10 +10,10 @@ export function Footer() {
           <div className="space-y-4 lg:col-span-1">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-950 font-black tracking-wider text-sm">
-                S
+                B
               </div>
               <span className="text-base font-bold tracking-tight text-neutral-100">
-                SoleVault
+                BaseSole
               </span>
             </div>
             <p className="text-xs text-neutral-400 leading-relaxed">
@@ -91,7 +91,7 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-12 border-t border-neutral-900 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-500">
-          <p>&copy;  SoleVault Inc. All rights reserved.</p>
+          <p>&copy;  BaseSole Inc. All rights reserved.</p>
           <div className="flex items-center gap-6 mt-4 sm:mt-0">
             <span>Secure Checkout Guaranteed</span>
           </div>
