@@ -22,19 +22,52 @@ export default function AkaChatWidget() {
   } = useChatStore();
 
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to latest message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+    if (container) container.scrollTop = container.scrollHeight;
   }, [messages, isStreaming]);
 
-  // Focus input on drawer open
+  // Keep the chat above the on-screen keyboard on mobile browsers.
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
+    if (!isOpen) return;
+
+    const updateViewport = () => {
+      const viewport = window.visualViewport;
+      chatRef.current?.style.setProperty(
+        "--chat-viewport-top",
+        `${viewport?.offsetTop ?? 0}px`,
+      );
+      chatRef.current?.style.setProperty(
+        "--chat-viewport-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+    };
+
+    updateViewport();
+    window.visualViewport?.addEventListener("resize", updateViewport);
+    window.visualViewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateViewport);
+      window.visualViewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+      chatRef.current?.style.removeProperty("--chat-viewport-top");
+      chatRef.current?.style.removeProperty("--chat-viewport-height");
+    };
+  }, [isOpen]);
+
+  // Avoid opening the mobile keyboard (and shifting the page) just to open chat.
+  useEffect(() => {
+    if (!isOpen || window.matchMedia("(max-width: 639px)").matches) return;
+
+    const timeoutId = window.setTimeout(() => inputRef.current?.focus(), 150);
+    return () => window.clearTimeout(timeoutId);
   }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,12 +123,20 @@ const renderMessageContent = (content: string) => {
 };
 
   return (
-    <aside aria-label="AI Support Chat" className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <aside
+      ref={chatRef}
+      aria-label="AI Support Chat"
+      className={`fixed z-50 flex flex-col ${
+        isOpen
+          ? "inset-x-0 top-[var(--chat-viewport-top,0px)] h-[var(--chat-viewport-height,100dvh)] items-stretch sm:inset-auto sm:bottom-6 sm:right-6 sm:top-auto sm:h-auto sm:items-end"
+          : "bottom-4 right-4 items-end sm:bottom-6 sm:right-6"
+      }`}
+    >
       {/* ================= OPEN CHAT WINDOW ================= */}
       {isOpen && (
-        <div className="mb-3 flex h-[540px] w-[370px] sm:w-[410px] flex-col overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="mb-0 flex h-full min-h-0 w-full flex-col overflow-hidden border border-neutral-800 bg-neutral-900 shadow-2xl backdrop-blur-xl sm:mb-3 sm:h-[min(540px,calc(100dvh-3rem))] sm:w-[410px] sm:max-w-[calc(100vw-3rem)] sm:rounded-2xl animate-in fade-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3.5">
+          <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3.5">
             <div className="flex items-center gap-3">
               <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 font-black text-xs text-white shadow-md shadow-blue-500/20">
                 A
@@ -136,7 +177,7 @@ const renderMessageContent = (content: string) => {
           </div>
 
           {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin scrollbar-thumb-neutral-700">
+          <div ref={messagesContainerRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-3.5 [webkit-overflow-scrolling:touch] scrollbar-thin scrollbar-thumb-neutral-700">
             {messages.map((msg) => {
               const isUser = msg.role === "user";
               return (
@@ -170,11 +211,10 @@ const renderMessageContent = (content: string) => {
                 </div>
               );
             })}
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Quick Action Suggestion Chips */}
-          <div className="border-t border-neutral-800/80 bg-neutral-950/40 px-3 py-2 overflow-x-auto flex gap-1.5 no-scrollbar">
+          <div className="flex shrink-0 gap-1.5 overflow-x-auto border-t border-neutral-800/80 bg-neutral-950/40 px-3 py-2 no-scrollbar">
             {QUICK_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
@@ -190,7 +230,7 @@ const renderMessageContent = (content: string) => {
           {/* Input Form */}
           <form
             onSubmit={handleSubmit}
-            className="border-t border-neutral-800 bg-neutral-950 p-2.5 flex items-center gap-2"
+            className="flex shrink-0 items-center gap-2 border-t border-neutral-800 bg-neutral-950 p-2.5"
           >
             <input
               ref={inputRef}
@@ -226,7 +266,9 @@ const renderMessageContent = (content: string) => {
       <button
         type="button"
         onClick={toggleChat}
-        className="group relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white shadow-xl shadow-blue-500/25 transition-all duration-200 hover:scale-105 active:scale-95"
+        className={`group relative h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white shadow-xl shadow-blue-500/25 transition-all duration-200 hover:scale-105 active:scale-95 ${
+          isOpen ? "hidden sm:flex" : "flex"
+        }`}
         aria-label="Toggle Aka Support Chat"
       >
         {isOpen ? (
