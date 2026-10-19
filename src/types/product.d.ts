@@ -35,7 +35,7 @@ export interface Product {
   colorwaysCount: number;
   availableSizes: string[];
   colors: string[];
-  primaryImage: string;
+  // primaryImage: string;
   imageUrl: string;
   images: Images[],
   galleryImages: string[];

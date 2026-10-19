@@ -93,7 +93,7 @@ export default function ShopPage() {
           brand: p.brand,
           category: p.category,
           price: p.price,
-          imageUrl: p.primaryImage,
+          imageUrl: p.imageUrl,
           inStock: p.inStock,
           salesCount: 0,
           isFeatured: false,
@@ -402,7 +402,7 @@ export default function ShopPage() {
 
                         <Link href={`/shop/${shoe.id}`}>
                           <Image
-                            src={shoe.imageUrl || "/images/placeholder-shoe.jpg"}
+                            src={shoe.imageUrl}
                             alt={shoe.title}
                             fill
                             sizes="(max-width: 768px) 100vw, 33vw"
