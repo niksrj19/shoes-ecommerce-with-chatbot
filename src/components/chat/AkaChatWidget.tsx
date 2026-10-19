@@ -35,30 +35,52 @@ export default function AkaChatWidget() {
   // Keep the chat above the on-screen keyboard on mobile browsers.
   useEffect(() => {
     if (!isOpen) return;
+    const chatElement = chatRef.current;
+    if (!chatElement) return;
+    const mobileViewport = window.matchMedia("(max-width: 639px)");
+    let animationFrame = 0;
 
     const updateViewport = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        if (!mobileViewport.matches) {
+          chatElement.style.removeProperty("top");
+          chatElement.style.removeProperty("left");
+          chatElement.style.removeProperty("right");
+          chatElement.style.removeProperty("bottom");
+          chatElement.style.removeProperty("width");
+          chatElement.style.removeProperty("height");
+          return;
+        }
+
       const viewport = window.visualViewport;
-      chatRef.current?.style.setProperty(
-        "--chat-viewport-top",
-        `${viewport?.offsetTop ?? 0}px`,
-      );
-      chatRef.current?.style.setProperty(
-        "--chat-viewport-height",
-        `${viewport?.height ?? window.innerHeight}px`,
-      );
+        chatElement.style.top = `${viewport?.offsetTop ?? 0}px`;
+        chatElement.style.left = `${viewport?.offsetLeft ?? 0}px`;
+        chatElement.style.right = "auto";
+        chatElement.style.bottom = "auto";
+        chatElement.style.width = `${viewport?.width ?? window.innerWidth}px`;
+        chatElement.style.height = `${viewport?.height ?? window.innerHeight}px`;
+      });
     };
 
     updateViewport();
     window.visualViewport?.addEventListener("resize", updateViewport);
     window.visualViewport?.addEventListener("scroll", updateViewport);
     window.addEventListener("resize", updateViewport);
+    mobileViewport.addEventListener("change", updateViewport);
 
     return () => {
+      window.cancelAnimationFrame(animationFrame);
       window.visualViewport?.removeEventListener("resize", updateViewport);
       window.visualViewport?.removeEventListener("scroll", updateViewport);
       window.removeEventListener("resize", updateViewport);
-      chatRef.current?.style.removeProperty("--chat-viewport-top");
-      chatRef.current?.style.removeProperty("--chat-viewport-height");
+      mobileViewport.removeEventListener("change", updateViewport);
+      chatElement.style.removeProperty("top");
+      chatElement.style.removeProperty("left");
+      chatElement.style.removeProperty("right");
+      chatElement.style.removeProperty("bottom");
+      chatElement.style.removeProperty("width");
+      chatElement.style.removeProperty("height");
     };
   }, [isOpen]);
 
@@ -128,7 +150,7 @@ const renderMessageContent = (content: string) => {
       aria-label="AI Support Chat"
       className={`fixed z-50 flex flex-col ${
         isOpen
-          ? "inset-x-0 top-[var(--chat-viewport-top,0px)] h-[var(--chat-viewport-height,100dvh)] items-stretch sm:inset-auto sm:bottom-6 sm:right-6 sm:top-auto sm:h-auto sm:items-end"
+          ? "inset-x-0 top-0 h-dvh items-stretch sm:inset-auto sm:bottom-6 sm:right-6 sm:top-auto sm:h-auto sm:items-end"
           : "bottom-4 right-4 items-end sm:bottom-6 sm:right-6"
       }`}
     >
@@ -239,7 +261,7 @@ const renderMessageContent = (content: string) => {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Aka about orders, refunds, shoes..."
               disabled={isStreaming}
-              className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+              className="min-w-0 flex-1 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-base text-neutral-100 placeholder-neutral-500 focus:border-blue-500 focus:outline-none sm:text-xs"
             />
             <button
               type="submit"
