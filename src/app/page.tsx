@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CatalogService } from "@/services/catalog.service";
+import { useCartStore } from "@/store/use-cart-store";
 import { Product } from "@/types/product";
 
 const BRANDS = ["Nike", "Adidas", "Puma", "New Balance", "Jordan", "Reebok", "Under Armour"];
@@ -66,6 +67,7 @@ function ProductSkeleton() {
 }
 
 export default function Home() {
+  const addItem = useCartStore((state) => state.addItem);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -74,7 +76,9 @@ export default function Home() {
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const [wishlist, setWishlist] = useState<Set<string | number>>(new Set());
-  const [justAdded, setJustAdded] = useState<string | number | null>(null);
+  const [addingProductId, setAddingProductId] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const [addFailed, setAddFailed] = useState<string | null>(null);
   const touchStartX = useRef<number | null>(null);
   const goTo = (dir: 1 | -1) => setSlide((s) => (s + dir + SLIDES.length) % SLIDES.length);
 
@@ -121,10 +125,27 @@ export default function Home() {
       return next;
     });
 
-  const handleAdd = (id: string | number) => {
-    // TODO: wire to cart service / context
-    setJustAdded(id);
-    setTimeout(() => setJustAdded((cur) => (cur === id ? null : cur)), 1500);
+  const handleAdd = async (product: Product) => {
+    setAddingProductId(product.id);
+    setAddFailed(null);
+    setJustAdded(null);
+
+    const added = await addItem({
+      productId: product.id,
+      size: product.availableSizes?.[0] || "US 9",
+      color: product.colors?.[0] || "Standard",
+      quantity: 1,
+    });
+
+    setAddingProductId(null);
+    if (!added) {
+      setAddFailed(product.id);
+      setTimeout(() => setAddFailed((current) => current === product.id ? null : current), 2500);
+      return;
+    }
+
+    setJustAdded(product.id);
+    setTimeout(() => setJustAdded((current) => current === product.id ? null : current), 1500);
   };
 
   const current = SLIDES[slide];
@@ -335,13 +356,22 @@ export default function Home() {
 
                     <button
                       type="button"
-                      onClick={() => handleAdd(product.id)}
-                      disabled={!product.inStock}
+                      onClick={() => handleAdd(product)}
+                      disabled={!product.inStock || addingProductId === product.id}
+                      aria-live="polite"
                       className={`mt-3 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-bold sm:gap-2 sm:px-4 sm:text-sm text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 ${
-                        justAdded === product.id ? "bg-emerald-600" : "bg-[#09101D] hover:bg-slate-800"
+                        justAdded === product.id
+                          ? "bg-emerald-600"
+                          : addFailed === product.id
+                            ? "bg-red-700 hover:bg-red-800"
+                            : "bg-[#09101D] hover:bg-slate-800"
                       }`}
                     >
-                      {justAdded === product.id ? (
+                      {addingProductId === product.id ? (
+                        "Adding…"
+                      ) : addFailed === product.id ? (
+                        "Couldn't add — try again"
+                      ) : justAdded === product.id ? (
                         <>
                           <Icon d="M5 13l4 4L19 7" className="h-4 w-4" /> Added
                         </>

@@ -5,21 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { useAuthStore } from "@/store/use-auth-store";
-// If you have a cart store, import it here:
-// import { useCartStore } from "@/store/use-cart-store";
-
-// Inside src/app/components/Header.tsx
 import { useCartStore } from "@/store/use-cart-store";
 
 export default function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, logout, initializeAuth } = useAuthStore();
   
-  // Example cart count (uncomment/replace with your cart store hook if available)
   const { totalQuantity, openDrawer } = useCartStore();
-  // const cartItems = useCartStore((state) => state.items);
-  // const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-  const itemCount = 0; // Set a mock count or remove the badge span if unneeded
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -126,33 +118,6 @@ export default function Header() {
 
         {/* Right Side: Cart & Auth State */}
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Shopping Cart Icon Button */}
-          {/* <Link
-            href="/cart"
-            aria-label="Shopping Cart"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-              />
-            </svg>
-           
-            {itemCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-bold text-neutral-950">
-                {itemCount}
-              </span>
-            )}
-          </Link> */}
-
           <button
             type="button"
             onClick={openDrawer}
