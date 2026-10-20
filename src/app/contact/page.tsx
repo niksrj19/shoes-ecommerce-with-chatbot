@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import ContactForm from "@/components/contact/ContactForm";
 
 const supportEmail = "support@basesole.online";
 
@@ -72,8 +73,8 @@ export default function ContactPage() {
                   <ContactIcon path="M7 17 17 7M7 7h10v10" />
                 </a>
                 <p className="mt-3 text-sm leading-6 text-slate-400">
-                  Prefer email? Write to us directly, or use the form and your
-                  email app will open with your message ready.
+                  Prefer email? Write to us directly and our support team will
+                  be happy to help.
                 </p>
               </div>
 
@@ -106,122 +107,7 @@ export default function ContactPage() {
               </p>
             </div>
 
-            <form
-              action={`mailto:${supportEmail}`}
-              method="post"
-              encType="text/plain"
-              className="space-y-5"
-            >
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="contact-name"
-                    className="mb-2 block text-sm font-semibold text-slate-700"
-                  >
-                    Your name
-                  </label>
-                  <input
-                    id="contact-name"
-                    name="Name"
-                    type="text"
-                    autoComplete="name"
-                    required
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#FF0055] focus:bg-white focus:ring-4 focus:ring-[#FF0055]/10"
-                    placeholder="Alex Morgan"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="contact-email"
-                    className="mb-2 block text-sm font-semibold text-slate-700"
-                  >
-                    Email address
-                  </label>
-                  <input
-                    id="contact-email"
-                    name="Email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#FF0055] focus:bg-white focus:ring-4 focus:ring-[#FF0055]/10"
-                    placeholder="alex@example.com"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="contact-topic"
-                    className="mb-2 block text-sm font-semibold text-slate-700"
-                  >
-                    What can we help with?
-                  </label>
-                  <select
-                    id="contact-topic"
-                    name="Topic"
-                    defaultValue=""
-                    required
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-[#FF0055] focus:bg-white focus:ring-4 focus:ring-[#FF0055]/10"
-                  >
-                    <option value="" disabled>
-                      Choose a topic
-                    </option>
-                    <option value="Order support">Order support</option>
-                    <option value="Sizing and fit">Sizing and fit</option>
-                    <option value="Returns and exchanges">Returns and exchanges</option>
-                    <option value="Product question">Product question</option>
-                    <option value="Other">Something else</option>
-                  </select>
-                </div>
-                <div>
-                  <label
-                    htmlFor="contact-order"
-                    className="mb-2 block text-sm font-semibold text-slate-700"
-                  >
-                    Order number{" "}
-                    <span className="font-normal text-slate-400">(optional)</span>
-                  </label>
-                  <input
-                    id="contact-order"
-                    name="Order number"
-                    type="text"
-                    autoComplete="off"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#FF0055] focus:bg-white focus:ring-4 focus:ring-[#FF0055]/10"
-                    placeholder="e.g. BS-12345"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="contact-message"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
-                  Message
-                </label>
-                <textarea
-                  id="contact-message"
-                  name="Message"
-                  rows={5}
-                  required
-                  className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#FF0055] focus:bg-white focus:ring-4 focus:ring-[#FF0055]/10"
-                  placeholder="Tell us a little about how we can help..."
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF0055] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#FF0055]/20 transition hover:bg-[#e6004d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF0055] sm:w-auto"
-              >
-                Send message
-                <ContactIcon path="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
-              </button>
-              <p className="text-xs leading-5 text-slate-500">
-                Submitting opens your default email app with your message
-                prepared for {supportEmail}.
-              </p>
-            </form>
+            <ContactForm />
           </section>
         </div>
       </main>
