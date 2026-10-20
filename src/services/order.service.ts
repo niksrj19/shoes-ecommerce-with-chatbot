@@ -14,7 +14,7 @@ export const OrderService = {
    * GET /api/orders?page=1&limit=10
    */
   async getOrders(page: number = 1, limit: number = 10): Promise<OrderListResponse> {
-    console.log("nitesh getOrders apiClient=", JSON.stringify(apiClient))
+   
     const response = await apiClient.get<OrderListResponse>("api/orders", {
       params: { page, limit },
     });
