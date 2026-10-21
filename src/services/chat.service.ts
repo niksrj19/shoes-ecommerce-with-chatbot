@@ -8,7 +8,8 @@ export const ChatService = {
     payload: ChatStreamRequestPayload,
     onChunk: (token: string) => void,
     onComplete: () => void,
-    onError: (error: Error) => void
+    onError: (error: Error) => void,
+    onCartCleared: () => void
   ): Promise<void> {
     try {
       const response = await fetch(`${BACKEND_BASE_URL}/ai/chat/stream`, {
@@ -58,6 +59,11 @@ export const ChatService = {
               } else if (currentEvent === "tool_call") {
                 // Matches StreamService.emitToolCall -> { name: "...", args: "..." }
                 console.log(`Tool executing: ${parsed.name} with args: ${parsed.args}`);
+              } else if (
+                currentEvent === "cart_updated" &&
+                parsed.action === "cleared"
+              ) {
+                onCartCleared();
               } else if (currentEvent === "done") {
                 onComplete();
                 return;

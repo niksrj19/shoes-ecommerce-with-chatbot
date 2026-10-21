@@ -16,11 +16,29 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  mergedCartUserIds: string[];
   setUser: (user: User) => void;
   clearUser: () => void;
   initializeAuth: () => Promise<void>;
   logout: () => Promise<void>;
+}
+
+interface AuthMeUser {
+  userId?: string;
+  id?: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  avatarUrl?: string;
+  emailVerified?: boolean;
+  role?: string;
+}
+
+type AuthMeResponse = AuthMeUser | { user?: AuthMeUser };
+
+function isAuthMeEnvelope(
+  response: AuthMeResponse
+): response is { user?: AuthMeUser } {
+  return Object.prototype.hasOwnProperty.call(response, "user");
 }
 
 let authInitializationPromise: Promise<void> | null = null;
@@ -32,7 +50,6 @@ export const useAuthStore = create<AuthState>()(
         user: null,
         isAuthenticated: false,
         isLoading: true,
-        mergedCartUserIds: [],
 
         setUser: (user: User) =>
           set({ user, isAuthenticated: true, isLoading: false }),
@@ -46,22 +63,27 @@ export const useAuthStore = create<AuthState>()(
           authInitializationPromise = (async () => {
             try {
               set({ isLoading: true });
-              const response = await apiClient.get<{ user?: User }>("/auth/me");
-              const user = response.data?.user;
+              const response = await apiClient.get<AuthMeResponse>("/auth/me");
+              const authUser = isAuthMeEnvelope(response.data)
+                ? response.data.user
+                : response.data;
+              const userId = authUser?.userId || authUser?.id;
 
-              if (user) {
+              if (authUser && userId && authUser.email && authUser.role) {
+                const user: User = {
+                  userId,
+                  name: authUser.name || "",
+                  email: authUser.email,
+                  avatar: authUser.avatar || authUser.avatarUrl,
+                  emailVerified: authUser.emailVerified,
+                  role: authUser.role,
+                };
                 set({ user, isAuthenticated: true, isLoading: false });
 
-                if (!get().mergedCartUserIds.includes(user.userId)) {
-                  try {
-                    await useCartStore.getState().mergeCartOnLogin();
-                    set((state) => ({
-                      mergedCartUserIds: [...state.mergedCartUserIds, user.userId],
-                    }));
-                  } catch (error) {
-                    // Keep the user unmarked so a later auth initialization can retry the merge.
-                    console.error("Failed to merge guest cart for authenticated user:", error);
-                  }
+                try {
+                  await useCartStore.getState().mergeCartOnLogin();
+                } catch (error) {
+                  console.error("Failed to merge guest cart for authenticated user:", error);
                 }
               } else {
                 set({ user: null, isAuthenticated: false, isLoading: false });
@@ -110,7 +132,6 @@ export const useAuthStore = create<AuthState>()(
         partialize: (state) => ({
           user: state.user,
           isAuthenticated: state.isAuthenticated,
-          mergedCartUserIds: state.mergedCartUserIds,
         }),
       }
     )
