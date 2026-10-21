@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { ChatMessage } from "@/types/chat";
 import { ChatService } from "@/services/chat.service";
 import { getOrCreateSessionId } from "@/lib/session";
+import { useCartStore } from "@/store/use-cart-store";
 
 interface ChatStoreState {
   isOpen: boolean;
@@ -98,6 +99,9 @@ export const useChatStore = create<ChatStoreState>()(
                   : msg
               ),
             }));
+          },
+          () => {
+            void useCartStore.getState().fetchCart();
           }
         );
       },
