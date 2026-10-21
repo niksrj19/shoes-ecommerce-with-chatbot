@@ -131,7 +131,7 @@ export default function InvoiceModal({ order, onClose }: InvoiceModalProps) {
 
         {/* Policy Footer */}
         <p className="mt-8 text-center text-[10px] text-slate-400">
-          Thank you for choosing BaseSole! This order is protected by our 30-day authentic return policy.
+          Thank you for choosing BaseSole! This order is protected by our 7-day return policy.
         </p>
       </div>
     </div>
